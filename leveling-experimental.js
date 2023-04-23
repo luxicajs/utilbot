@@ -2,7 +2,7 @@ import "dotenv/config";
 import { Client, GatewayIntentBits, EmbedBuilder, AttachmentBuilder } from "discord.js";
 import { QuickDB } from "quick.db";
 import canvacord from "canvacord";
-// import fs from "node:fs";
+import fs from "node:fs";
 import isNumber from "is-number";
 
 const bot = new Client({ intents: [GatewayIntentBits.MessageContent, GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildModeration, GatewayIntentBits.GuildPresences] });
@@ -42,11 +42,14 @@ bot.on("messageCreate", async message => {
             await db.set(`${authorId}.xp`, user.xp + xpToAdd);
             await db.set(`${authorId}.allXp`, user.allXp + xpToAdd);
             if (user.xp + xpToAdd > xpNeeded(user.level)) {
+                // if (user.level == 15) {
+                //     // give them the embed perms role
+                // }
                 let setXp = (user.xp + xpToAdd) - xpNeeded(user.level);
                 await db.set(authorId, { xp: setXp, level: user.level + 1, allXp: user.allXp + xpToAdd });
             }
         } else {
-            await db.set(authorId, { level: 0, xp: xpToAdd, allXp: xpToAdd, username: `${message.author.username}#${message.author.discriminator}` });
+            await db.set(authorId, { level: 0, xp: xpToAdd, allXp: xpToAdd });
         }
 
         recentChatters[authorId] = 1;
@@ -64,20 +67,21 @@ bot.on("messageCreate", async message => {
 
         switch (command) {
             case "help":
-                message.reply("This is a level and a logging bot. This bot is currently in its alpha stage. The following commands are available for now: `.rank` `.leaderboard` `.help`. If you have any questions, please contact Luxica#0001."
-                    + "\nRole rewards and level up messages are not yet enabled on this bot to avoid conflict with the current leveling bot.");
+                message.reply("too lazy to write this lmao.");
                 break;
             case "leaderboard":
                 let page = isNumber(args[0]) ? Number(args[0]) - 1 : 0;
                 let all = await db.all();
                 let numberOfPages = Math.ceil(all.length / 10);
                 if (page >= numberOfPages) { page = numberOfPages - 1; }
-                let sorted = all.sort((a, b) => { return a["allXp"] - b["allXp"] }).slice(page * 10, (page * 10) + 10);
+                let sorted = all.sort((a, b) => b["value"]["allXp"] - a["value"]["allXp"]).slice(page * 10, (page * 10) + 10);
 
                 let lbString = "";
 
                 let placement = all.findIndex(e => e.id == message.author.id) + 1;
 
+                console.log(sorted);
+                
                 sorted.forEach((e, i) => {
                     let did = message.guild.members.cache.get(e.id);
                     let username = did ? `${did.user.username}#${did.user.discriminator}` : `<@${e.id}>`;
@@ -94,8 +98,8 @@ bot.on("messageCreate", async message => {
             case "rank":
                 if (args[0]) return message.channel.send("You can't view someone's rank yet... It's still a work in progress.");
                 let player = await db.get(authorId);
-
-                let alldb = await db.all();
+                let dat = await db.all();
+                let alldb = dat.sort((a, b) => b["value"]["allXp"] - a["value"]["allXp"]);
                 let rank = alldb.findIndex(e => e.id == message.author.id) + 1;
 
                 const card = new canvacord.Rank()
@@ -108,7 +112,7 @@ bot.on("messageCreate", async message => {
                     .setLevel(player.level)
                     .setRequiredXP(xpNeeded(player.level), "#AAA")
                     .setProgressBar("#0074D9")
-                    //.setBackground("IMAGE", fs.readFileSync("./final.png")) You probably don't have this image
+                    .setBackground("IMAGE", fs.readFileSync("./final.png")) // you probably don't have this image. fallback
                     .setUsername(message.author.username)
                     .setDiscriminator(message.author.discriminator)
                     .setRank(rank)

@@ -9,40 +9,48 @@ const bot = new Client({ intents: [GatewayIntentBits.MessageContent, GatewayInte
 
 const db = new QuickDB({ filePath: "./levels.db" });
 
-let recentChatters = [];
-let prefix = ".";
+const prefix = ".";
+const minXp = 15;
+const maxXp = 25;
 
 bot.on("ready", async () => {
     console.log("Bot ready");
 });
 
-let minXp = 15;
-let maxXp = 25;
+async function addXp(authorId) {
+    const xpToAdd = Math.floor(Math.random() * (maxXp - minXp + 1)) + minXp;
+    let user = await db.get(authorId);
 
-function xpNeeded(lvl) {
+    if (user) {
+        const newXp = user.xp + xpToAdd;
+        const newAllXp = user.allXp + xpToAdd;
+        await db.set(`${authorId}.xp`, newXp);
+        await db.set(`${authorId}.allXp`, newAllXp);
+        
+        if (newXp > xpNeeded(user.level)) {
+            const setXp = newXp - xpNeeded(user.level);
+            await db.set(authorId, { xp: setXp, level: user.level + 1, allXp: newAllXp });
+        }
+    } else {
+        await db.set(authorId, { level: 0, xp: xpToAdd, allXp: xpToAdd });
+    }
+}
+
+function xpNeeded(level) {
     let xp = 100;
-    for (let i = 0; i < lvl; i++) {
+    for (let i = 0; i < level; i++) {
         xp += 55 + (10 * i);
     }
     return xp;
 }
 
 bot.on("messageCreate", async message => {
-    if (message.channel.type === "dm") return;
-    if (message.author.bot) return;
+    if (message.channel.type === "dm" || message.author.bot) {
+        return;
+    }
 
-    let authorId = message.author.id;
+    const messageAuthorId = message.author
 
-    if (!recentChatters[authorId]) {
-        let xpToAdd = Math.floor(Math.random() * (maxXp - minXp + 1)) + minXp;
-
-        let user = await db.get(authorId);
-
-        if (user) {
-            await db.set(`${authorId}.xp`, user.xp + xpToAdd);
-            await db.set(`${authorId}.allXp`, user.allXp + xpToAdd);
-            if (user.xp + xpToAdd > xpNeeded(user.level)) {
-                // if (user.level == 15) {
                 //     // give them the embed perms role
                 // }
                 let setXp = (user.xp + xpToAdd) - xpNeeded(user.level);

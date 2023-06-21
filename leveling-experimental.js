@@ -62,7 +62,7 @@ bot.on("messageCreate", async (message) => {
   if (!recentChatters.has(authorId)) {
     const xpToAdd = Math.floor(Math.random() * (maxXp - minXp + 1)) + minXp;
 
-    const userExists = await table.has("id", authorId); // Is this a joke?
+    const userExists = await table.has("id", authorId);
 
     if (userExists) {
       const user = await table.get("id", authorId);
@@ -141,13 +141,14 @@ bot.on("messageCreate", async (message) => {
 
       case "rank":
       case "r":
-        const rankUser = message.guild.members.cache.get(
-          args[0] && isNumber(args[0]) ? args[0] : message.author.id
-        ).user;
+        // TODO. DOESN'T WORK. SCRAPPED FOR NOW
+        // const rankUser = message.guild.members.cache.get(
+        //   args[0] && isNumber(args[0])
+        // ).user || message.author;
+
+        const rankUser = message.author;
 
         const userInfo = await table.get("id", rankUser.id);
-
-        if (!userInfo) return message.reply("User not found.");
 
         const placement = await db.executeQuery(`SELECT COUNT(*) + 1 AS rank
                 FROM levels
@@ -178,7 +179,9 @@ bot.on("messageCreate", async (message) => {
         break;
 
       case "help":
-        message.reply("`.leaderboard/.ld/.lb` - Leaderboard | `.rank/.r` - Rank");
+        message.reply(
+          "`.leaderboard/.ld/.lb` - Leaderboard | `.rank/.r` - Rank\nRunning 2.0.0-rc1v"
+        );
         break;
     }
   }
